@@ -11,21 +11,105 @@
 	// Scene
 	const scene = new THREE.Scene();
 	let renderer;
-
-	const geometry = new THREE.SphereGeometry(1);
-	const material = new THREE.MeshNormalMaterial();
-	const mesh = new THREE.Mesh(geometry, material);
-	scene.add(mesh);
-
-	const boxGeometry = new THREE.BoxGeometry(2, 2, 2);
-	const boxMaterial = new THREE.MeshNormalMaterial();
-	const boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
-	scene.add(boxMesh);
-
+	const mass = 1;
+	const axisWidth = 5;
+	const wheelShape = new CANNON.Sphere(1);
+	const wheelMaterial = new CANNON.Material("wheel");
+	const down = new CANNON.Vec3(0, -1, 0);
 	const carBody = new CANNON.Body({
 		mass: 5,
-		position: new CANNON.Vec3(0,6,0),
-		shape: new CANNON.Box(new CANNON.Vec3(4,0.5,2)),
+		position: new CANNON.Vec3(0, 6, 0),
+		shape: new CANNON.Box(new CANNON.Vec3(4, 0.5, 2)),
+	});
+	const vehicle = new CANNON.RigidVehicle({
+		chassisBody: carBody,
+	});
+
+	const wheelBody1 = new CANNON.Body({
+		mass,
+		material: wheelMaterial,
+	});
+
+	wheelBody1.addShape(wheelShape);
+	wheelBody1.angularDamping = 0.4;
+	vehicle.addWheel({
+		body: wheelBody1,
+		position: new CANNON.Vec3(-2, 0, axisWidth / 2),
+		axis: new CANNON.Vec3(0, 0, 1),
+		direction: down,
+	});
+
+	const wheelBody2 = new CANNON.Body({
+		mass,
+		material: wheelMaterial,
+	});
+
+	wheelBody2.addShape(wheelShape);
+	wheelBody2.angularDamping = 0.4;
+	vehicle.addWheel({
+		body: wheelBody2,
+		position: new CANNON.Vec3(-2, 0, -axisWidth / 2),
+		axis: new CANNON.Vec3(0, 0, 1),
+		direction: down,
+	});
+
+	const wheelBody3 = new CANNON.Body({
+		mass,
+		material: wheelMaterial,
+	});
+
+	wheelBody3.addShape(wheelShape);
+	wheelBody3.angularDamping = 0.4;
+	vehicle.addWheel({
+		body: wheelBody3,
+		position: new CANNON.Vec3(2, 0, -axisWidth / 2),
+		axis: new CANNON.Vec3(0, 0, 1),
+		direction: down,
+	});
+
+	const wheelBody4 = new CANNON.Body({
+		mass,
+		material: wheelMaterial,
+	});
+
+	wheelBody4.addShape(wheelShape);
+	wheelBody4.angularDamping = 0.4;
+	vehicle.addWheel({
+		body: wheelBody4,
+		position: new CANNON.Vec3(2, 0, axisWidth / 2),
+		axis: new CANNON.Vec3(0, 0, 1),
+		direction: down,
+	});
+
+	//car
+	document.addEventListener("keydown", (event) => {
+		const maxSteerVal = Math.PI / 8;
+		const maxForce = 10;
+
+		switch (event.key) {
+			case "w":
+			case "ArrowUp":
+				vehicle.setWheelForce(maxForce, 0);
+				vehicle.setWheelForce(maxForce, 1);
+				break;
+			case "s":
+			case "ArrowDown":
+				vehicle.setWheelForce(-maxForce / 2, 0);
+				vehicle.setWheelForce(-maxForce / 2, 1);
+				break;
+
+			case "a":
+			case "ArrowLeft":
+				vehicle.setSteeringValue(maxSteerVal, 0);
+				vehicle.setSteeringValue(maxSteerVal, 1);
+				break;
+
+			case "d":
+			case "ArrowRight":
+				vehicle.setSteeringValue(-maxSteerVal, 0);
+				vehicle.setSteeringValue(-maxSteerVal, 1);
+				break;
+		}
 	});
 	onMount(() => {
 		// Canvas
@@ -49,22 +133,7 @@
 
 		groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
 		physicsWorld.addBody(groundBody);
-
-		const sphereBody = new CANNON.Body({
-			mass: 5,
-			shape: new CANNON.Sphere(1),
-		});
-
-		const boxBody = new CANNON.Body({
-			mass: 5,
-			shape: new CANNON.Box(new CANNON.Vec3(1, 1, 1)),
-		});
-
-		sphereBody.position.set(0, 7, 0);
-		boxBody.position.set(1, 10, 0);
-
-		physicsWorld.addBody(sphereBody);
-		physicsWorld.addBody(boxBody);
+		vehicle.addToWorld(physicsWorld);
 
 		const cannonDebugger = new CannonDebugger(scene, physicsWorld, {});
 
@@ -73,10 +142,7 @@
 			physicsWorld.fixedStep();
 			cannonDebugger.update();
 			orbitControls.update();
-			boxMesh.position.copy(boxBody.position);
-			boxMesh.quaternion.copy(boxBody.quaternion);
-			mesh.position.copy(sphereBody.position);
-			mesh.quaternion.copy(sphereBody.quaternion);
+
 			renderer.render(scene, camera);
 		};
 
