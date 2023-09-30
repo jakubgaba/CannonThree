@@ -11,7 +11,16 @@
 	// Scene
 	const scene = new THREE.Scene();
 	let renderer;
-	
+	const timeStep = 1 / 60;
+	const geometry = new THREE.BoxGeometry(20,20, 1);
+	const material = new THREE.MeshBasicMaterial({
+		color: 0xffff00,
+		side: THREE.DoubleSide,
+	});
+	const plane = new THREE.Mesh(geometry, material);
+	scene.add(plane);
+
+
 	onMount(() => {
 		// Canvas
 		const canvas = document.querySelector(".draw");
@@ -28,19 +37,28 @@
 
 		const groundBody = new CANNON.Body({
 			type: CANNON.Body.STATIC,
-			//infinite geometric plane
-			shape: new CANNON.Plane(),
+			
+			shape: new CANNON.Box(new CANNON.Vec3(15, 15, 0.5)),
 		});
 
 		groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
 		physicsWorld.addBody(groundBody);
-	
+
+
+		
+		console.log(groundBody.shapes[0].halfExtents);
+
+
 
 		const cannonDebugger = new CannonDebugger(scene, physicsWorld, {});
 
 		const animate = () => {
+			physicsWorld.step(timeStep);
 			requestAnimationFrame(animate);
-			physicsWorld.fixedStep();
+
+			plane.position.copy(groundBody.position);
+			plane.quaternion.copy(groundBody.quaternion);
+
 			cannonDebugger.update();
 			orbitControls.update();
 
